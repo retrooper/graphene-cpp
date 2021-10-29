@@ -33,6 +33,7 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                         reasonJson["color"] = "dark red";
                         disconnect.reason = reasonJson.dump();
                         graphene::send_packet(socket, disconnect);
+                        socket.close();
                     } else if (handshake.protocolVersion < SERVER_PROTOCOL_VERSION) {
                         graphene::login::server::packetdisconnect disconnect;
                         nlohmann::json reasonJson;
@@ -40,12 +41,18 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                         reasonJson["color"] = "dark red";
                         disconnect.reason = reasonJson.dump();
                         graphene::send_packet(socket, disconnect);
+                        socket.close();
                     } else {
                         connectionStates[&socket] = graphene::LOGIN;
                     }
                 } else {
                     //Throw error
                 }
+            }
+            //Legacy ping request
+            else if (id == 0xFE) {
+                std::cout << "dam" << std::endl;
+
             }
             break;
         }
@@ -101,6 +108,7 @@ void process_incoming_packet(kissnet::tcp_socket &socket, uint32_t size, kn::buf
         int id = reader.read_var_int();
         handle(socket, reader, state, id, buff, size);
         keepProcessing = reader.remaining_byte_count() != 0;
+        std::cout << "len: " << length << ", id: " << id << std::endl;
         std::cout << "rbc: " << reader.remaining_byte_count() << std::endl;
     }
 
