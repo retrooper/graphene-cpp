@@ -7,8 +7,7 @@ include_directories(libs)
 include_directories(include)
 include(FetchContent)
 
-file(GLOB sources "${PROJECT_SOURCE_DIR}/src/*.cpp")
-add_executable(graphene ${sources} main.cpp)
+add_executable(graphene ${sources} src/main.cpp)
 
 FetchContent_Declare(fetch_nlohmann_json
         GIT_REPOSITORY https://github.com/nlohmann/json)

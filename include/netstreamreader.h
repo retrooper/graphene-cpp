@@ -143,8 +143,6 @@ namespace graphene {
         std::u16string read_utf_16(const uint64_t &maxSize = 32767) {
             int len = read_var_int();
             if (len > maxSize) {
-                std::cout << "Sus!" << std::endl;
-                std::cout << "Failed to read string, because it is too large! Max size: " << std::to_string(maxSize) << std::endl;
                 throw std::runtime_error("Failed to read string, because it is too large! Max size: " + std::to_string(maxSize));
             }
             std::u16string msg;

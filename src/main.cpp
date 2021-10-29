@@ -34,6 +34,7 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                         disconnect.reason = reasonJson.dump();
                         graphene::send_packet(socket, disconnect);
                         socket.close();
+                        std::cout << "Disconnected a user due to having a newer client!" << std::endl;
                     } else if (handshake.protocolVersion < SERVER_PROTOCOL_VERSION) {
                         graphene::login::server::packetdisconnect disconnect;
                         nlohmann::json reasonJson;
@@ -42,6 +43,7 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                         disconnect.reason = reasonJson.dump();
                         graphene::send_packet(socket, disconnect);
                         socket.close();
+                        std::cout << "Disconnected a user due to having an outdated client!" << std::endl;
                     } else {
                         connectionStates[&socket] = graphene::LOGIN;
                     }
@@ -51,6 +53,7 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
             }
             //Legacy ping request
             else if (id == 0xFE) {
+                //TODO Handle legacy ping request, although it isn't urgent
                 std::cout << "dam" << std::endl;
 
             }
