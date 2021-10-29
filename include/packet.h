@@ -4,7 +4,6 @@
 #include "netstreamreader.h"
 #include "netstreamwriter.h"
 #include "nlohmann/json.hpp"
-
 namespace graphene {
     struct packet {
         packet() {
@@ -114,12 +113,42 @@ namespace graphene {
                     writer.write_utf_8(jsonResponse);
                 }
             };
+
+            struct packetpong : public packet {
+                packetpong() {
+                    id = 0x01;
+                }
+
+                long payload;
+                void decode(graphene::netstreamreader &reader) override {
+                    payload = reader.read_long();
+                }
+
+                void encode(graphene::netstreamwriter &writer) override {
+                    packet::encode(writer);
+                    writer.write_long(payload);
+                }
+            };
         }
     }
 
     namespace login {
         namespace client {
+            struct packetloginstart : public packet {
+                packetloginstart() {
+                    id = 0x00;
+                }
+                std::string username;
 
+                void decode(graphene::netstreamreader& reader) override {
+                    username = reader.read_utf_8(16);
+                }
+
+                void encode(graphene::netstreamwriter& writer) override {
+                    packet::encode(writer);
+                    writer.write_utf_8(username, 16);
+                }
+            };
         }
 
         namespace server {
@@ -136,6 +165,31 @@ namespace graphene {
                 void encode(graphene::netstreamwriter& writer) override {
                     packet::encode(writer);
                     writer.write_utf_8(reason);
+                }
+            };
+
+            struct packetencryptionrequest : public packet {
+                packetencryptionrequest() {
+                    id = 0x01;
+                }
+                std::string serverID;
+                std::vector<char> publicKey;
+                std::vector<char> verifyToken;
+
+                void decode(graphene::netstreamreader& reader) override {
+                    serverID = reader.read_utf_8(20);
+                    int publicKeyLength = reader.read_var_int();
+                    publicKey = reader.read_bytes(publicKeyLength);
+                    int verifyTokenLength = reader.read_var_int();
+                    verifyToken = reader.read_bytes(verifyTokenLength);
+                }
+
+                void encode(graphene::netstreamwriter& writer) override {
+                    writer.write_utf_8(serverID);
+                    writer.write_var_int(publicKey.size());
+                    writer.write_bytes(publicKey);
+                    writer.write_var_int(verifyToken.size());
+                    writer.write_bytes(verifyToken);
                 }
             };
         }

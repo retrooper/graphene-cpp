@@ -14,4 +14,4 @@ FetchContent_Declare(fetch_nlohmann_json
 
 FetchContent_MakeAvailable(fetch_nlohmann_json)
 
-target_link_libraries(graphene nlohmann_json )
+target_link_libraries(graphene nlohmann_json)

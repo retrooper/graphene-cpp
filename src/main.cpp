@@ -9,11 +9,12 @@
 #include "connectionstate.h"
 #include <unordered_map>
 #include "nlohmann/json.hpp"
-
 namespace kn = kissnet;
 
 std::unordered_map<kissnet::tcp_socket *, graphene::connectionstate> connectionStates;
 const int SERVER_PROTOCOL_VERSION = 47;
+
+graphene::server mcServer;
 
 void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, const graphene::connectionstate &state,
             const int &id, kn::buffer<1024> &rawBuff, uint32_t rawBuffSize) {
@@ -22,26 +23,28 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
             graphene::handshaking::client::packethandshake handshake;
             if (handshake.id == id) {
                 handshake.decode(reader);
+                connectionStates[&socket] = handshake.nextState;
                 if (handshake.nextState == graphene::STATUS) {
                     connectionStates[&socket] = graphene::STATUS;
-                    std::cout << "Switched to status state! PV: " << handshake.protocolVersion << std::endl;
                 } else if (handshake.nextState == graphene::LOGIN) {
                     if (handshake.protocolVersion > SERVER_PROTOCOL_VERSION) {
                         graphene::login::server::packetdisconnect disconnect;
                         nlohmann::json reasonJson;
                         reasonJson["text"] = "The server is outdated... you may not join!";
-                        reasonJson["color"] = "dark red";
+                        reasonJson["color"] = "dark_red";
                         disconnect.reason = reasonJson.dump();
                         graphene::send_packet(socket, disconnect);
+                        reader.finish();
                         socket.close();
                         std::cout << "Disconnected a user due to having a newer client!" << std::endl;
                     } else if (handshake.protocolVersion < SERVER_PROTOCOL_VERSION) {
                         graphene::login::server::packetdisconnect disconnect;
                         nlohmann::json reasonJson;
                         reasonJson["text"] = "Your client is outdated... you may not join!";
-                        reasonJson["color"] = "dark red";
+                        reasonJson["color"] = "dark_red";
                         disconnect.reason = reasonJson.dump();
                         graphene::send_packet(socket, disconnect);
+                        reader.finish();
                         socket.close();
                         std::cout << "Disconnected a user due to having an outdated client!" << std::endl;
                     } else {
@@ -51,7 +54,7 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                     //Throw error
                 }
             }
-            //Legacy ping request
+                //Legacy ping request
             else if (id == 0xFE) {
                 //TODO Handle legacy ping request, although it isn't urgent
                 std::cout << "dam" << std::endl;
@@ -89,7 +92,27 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
             break;
         }
         case graphene::LOGIN: {
-
+            switch (id) {
+                case 0x00: {
+                    graphene::login::client::packetloginstart loginStart;
+                    loginStart.decode(reader);
+                    std::cout << "User " << loginStart.username << " has requested to log onto the server!" << std::endl;
+                    graphene::login::server::packetencryptionrequest encryptionRequest;
+                    encryptionRequest.serverID = "";
+                    encryptionRequest.publicKey = {};
+                    break;
+                }
+                case 0x01: {
+                    std::cout << "yes" << std::endl;
+                    break;
+                }
+                case 0x02: {
+                    break;
+                }
+                default: {
+                    break;
+                }
+            }
             break;
         }
         case graphene::PLAY: {
@@ -120,6 +143,8 @@ void process_incoming_packet(kissnet::tcp_socket &socket, uint32_t size, kn::buf
 
 int main(int argc, char *argv[]) {
     std::cout << "Starting server!" << std::endl;
+    mcServer.initEncryption();
+    std::cout << "Initialized encryption!" << std::endl;
     //Configuration (by default)
     kn::port_t port = 999;
     //If specified : get port from command line

@@ -31,6 +31,11 @@ namespace graphene {
             write_bytes(bytes, 0, len);
         }
 
+        void write_bytes(const std::vector<char>& bytes) {
+            write_bytes(bytes, 0, bytes.size());
+        }
+
+
         void write_byte(int val) {
             data.push_back((char)val);
         }
