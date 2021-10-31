@@ -8,12 +8,13 @@
 #include "packet.h"
 #include "connectionstate.h"
 #include <unordered_map>
+
 #include "nlohmann/json.hpp"
 namespace kn = kissnet;
 
 std::unordered_map<kissnet::tcp_socket *, graphene::connectionstate> connectionStates;
-const int SERVER_PROTOCOL_VERSION = 47;
-
+const int SERVER_PROTOCOL_VERSION = 756;//47
+const std::string SERVER_VERSION_STRING = "1.17.1";
 graphene::server mcServer;
 
 void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, const graphene::connectionstate &state,
@@ -71,8 +72,8 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
 
                 nlohmann::json j;
                 j["version"] = nullptr;
-                j["version"]["name"] = "1.8.8";
-                j["version"]["protocol"] = 47;
+                j["version"]["name"] = SERVER_VERSION_STRING.c_str();
+                j["version"]["protocol"] = SERVER_PROTOCOL_VERSION;
 
                 j["players"] = nullptr;
                 j["players"]["max"] = 100;
