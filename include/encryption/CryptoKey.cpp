@@ -111,17 +111,19 @@ int cCryptoKey::ParsePrivate(const void * a_Data, size_t a_NumBytes, const std::
 
 	if (a_Password.empty())
 	{
-        const unsigned char* ptr = nullptr;
-        mbedtls_pk_parse_key(&m_Pk, ptr, 10, ptr, 0);
-		return mbedtls_pk_parse_key(&m_Pk, reinterpret_cast<const unsigned char *>(keyData.data()), a_NumBytes + 1, nullptr, 0);
-	}
+        //TODO Fix
+		//return mbedtls_pk_parse_key(&m_Pk, reinterpret_cast<const unsigned char *>(keyData.data()), a_NumBytes + 1, nullptr, 0);
+	    return -1;
+    }
 	else
 	{
-		return mbedtls_pk_parse_key(
-			&m_Pk,
-			reinterpret_cast<const unsigned char *>(keyData.data()), a_NumBytes + 1,
-			reinterpret_cast<const unsigned char *>(a_Password.c_str()), a_Password.size()
-		);
+        //TODO Fix
+        return -1;
+	//	return mbedtls_pk_parse_key(
+	//		&m_Pk,
+	//		reinterpret_cast<const unsigned char *>(keyData.data()), a_NumBytes + 1,
+	//		reinterpret_cast<const unsigned char *>(a_Password.c_str()), a_Password.size()
+	//	);
 	}
 }
 

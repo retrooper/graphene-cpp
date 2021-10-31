@@ -3,7 +3,6 @@
 
 // Declares the cSha1Checksum class representing the SHA-1 checksum calculator
 
-#include "Globals.h"
 #include "Sha1Checksum.h"
 
 
@@ -52,7 +51,7 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 // cSha1Checksum:
 
-cSha1Checksum::cSha1Checksum(void) :
+cSha1Checksum::cSha1Checksum() :
 	m_DoesAcceptInput(true)
 {
 	mbedtls_sha1_starts(&m_Sha1);
@@ -62,10 +61,8 @@ cSha1Checksum::cSha1Checksum(void) :
 
 
 
-void cSha1Checksum::Update(const Byte * a_Data, size_t a_Length)
+void cSha1Checksum::Update(const uint8_t * a_Data, size_t a_Length)
 {
-	ASSERT(m_DoesAcceptInput);  // Not Finalize()-d yet, or Restart()-ed
-
 	mbedtls_sha1_update(&m_Sha1, a_Data, a_Length);
 }
 
@@ -75,8 +72,6 @@ void cSha1Checksum::Update(const Byte * a_Data, size_t a_Length)
 
 void cSha1Checksum::Finalize(cSha1Checksum::Checksum & a_Output)
 {
-	ASSERT(m_DoesAcceptInput);  // Not Finalize()-d yet, or Restart()-ed
-
 	mbedtls_sha1_finish(&m_Sha1, a_Output);
 	m_DoesAcceptInput = false;
 }
@@ -85,13 +80,14 @@ void cSha1Checksum::Finalize(cSha1Checksum::Checksum & a_Output)
 
 
 
-void cSha1Checksum::DigestToHex(const Checksum & a_Digest, AString & a_Out)
+void cSha1Checksum::DigestToHex(const Checksum & a_Digest, std::string & a_Out)
 {
 	a_Out.clear();
 	a_Out.reserve(40);
 	for (int i = 0; i < 20; i++)
 	{
-		AppendPrintf(a_Out, "%x", a_Digest[i]);
+        //TODO Make
+		//AppendPrintf(a_Out, "%x", a_Digest[i]);
 	}
 }
 
@@ -99,7 +95,7 @@ void cSha1Checksum::DigestToHex(const Checksum & a_Digest, AString & a_Out)
 
 
 
-void cSha1Checksum::DigestToJava(const Checksum & a_Digest, AString & a_Out)
+void cSha1Checksum::DigestToJava(const Checksum & a_Digest, std::string & a_Out)
 {
 	Checksum Digest;
 	memcpy(Digest, a_Digest, sizeof(Digest));
@@ -123,7 +119,8 @@ void cSha1Checksum::DigestToJava(const Checksum & a_Digest, AString & a_Out)
 	a_Out.reserve(40);
 	for (int i = 0; i < 20; i++)
 	{
-		AppendPrintf(a_Out, "%02x", Digest[i]);
+        //TODO Make
+		//AppendPrintf(a_Out, "%02x", Digest[i]);
 	}
 	while ((a_Out.length() > 0) && (a_Out[0] == '0'))
 	{

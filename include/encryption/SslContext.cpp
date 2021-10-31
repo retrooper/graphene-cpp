@@ -3,15 +3,14 @@
 
 // Implements the cSslContext class that holds everything a single SSL context needs to function
 
-#include "Globals.h"
-#include "../mbedTLS++/SslContext.h"
-#include "../mbedTLS++/SslConfig.h"
+#include "SslContext.h"
+#include "SslConfig.h"
 
 
 
 
 
-cSslContext::cSslContext(void) :
+cSslContext::cSslContext() :
 	m_IsValid(false),
 	m_HasHandshaken(false)
 {
@@ -36,7 +35,6 @@ int cSslContext::Initialize(std::shared_ptr<const cSslConfig> a_Config)
 	// Check double-initialization:
 	if (m_IsValid)
 	{
-		LOGWARNING("SSL: Double initialization is not supported.");
 		return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;  // There is no return value well-suited for this, reuse this one.
 	}
 
@@ -44,7 +42,6 @@ int cSslContext::Initialize(std::shared_ptr<const cSslConfig> a_Config)
 	m_Config = std::move(a_Config);
 	if (m_Config == nullptr)
 	{
-		ASSERT(!"Config must not be nullptr");
 		return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
 	}
 
@@ -82,9 +79,8 @@ int cSslContext::Initialize(bool a_IsClient)
 
 
 
-void cSslContext::SetExpectedPeerName(const AString & a_ExpectedPeerName)
+void cSslContext::SetExpectedPeerName(const std::string & a_ExpectedPeerName)
 {
-	ASSERT(m_IsValid);  // Call Initialize() first
 	mbedtls_ssl_set_hostname(&m_Ssl, a_ExpectedPeerName.c_str());
 }
 
@@ -94,7 +90,6 @@ void cSslContext::SetExpectedPeerName(const AString & a_ExpectedPeerName)
 
 int cSslContext::WritePlain(const void * a_Data, size_t a_NumBytes)
 {
-	ASSERT(m_IsValid);  // Need to call Initialize() first
 	if (!m_HasHandshaken)
 	{
 		int res = Handshake();
@@ -113,7 +108,6 @@ int cSslContext::WritePlain(const void * a_Data, size_t a_NumBytes)
 
 int cSslContext::ReadPlain(void * a_Data, size_t a_MaxBytes)
 {
-	ASSERT(m_IsValid);  // Need to call Initialize() first
 	if (!m_HasHandshaken)
 	{
 		int res = Handshake();
@@ -130,11 +124,8 @@ int cSslContext::ReadPlain(void * a_Data, size_t a_MaxBytes)
 
 
 
-int cSslContext::Handshake(void)
+int cSslContext::Handshake()
 {
-	ASSERT(m_IsValid);  // Need to call Initialize() first
-	ASSERT(!m_HasHandshaken);  // Must not call twice
-
 	int res = mbedtls_ssl_handshake(&m_Ssl);
 	if (res == 0)
 	{
@@ -147,7 +138,7 @@ int cSslContext::Handshake(void)
 
 
 
-int cSslContext::NotifyClose(void)
+int cSslContext::NotifyClose()
 {
 	return mbedtls_ssl_close_notify(&m_Ssl);
 }

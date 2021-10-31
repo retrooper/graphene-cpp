@@ -3,7 +3,6 @@
 
 // Implements the cCtrDrbgContext class representing a wrapper over CTR-DRBG implementation in mbedTLS
 
-#include "Globals.h"
 #include "CtrDrbgContext.h"
 #include "EntropyContext.h"
 
@@ -11,7 +10,7 @@
 
 
 
-cCtrDrbgContext::cCtrDrbgContext(void) :
+cCtrDrbgContext::cCtrDrbgContext() :
 	m_EntropyContext(std::make_shared<cEntropyContext>()),
 	m_IsValid(false)
 {

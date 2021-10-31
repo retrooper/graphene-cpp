@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include <string>
 #include "mbedtls/sha1.h"
 
 
@@ -19,29 +20,29 @@
 class cSha1Checksum
 {
 public:
-	typedef Byte Checksum[20];  // The type used for storing the checksum
+	typedef uint8_t Checksum[20];  // The type used for storing the checksum
 
-	cSha1Checksum(void);
+	cSha1Checksum();
 
 	/** Adds the specified data to the checksum */
-	void Update(const Byte * a_Data, size_t a_Length);
+	void Update(const uint8_t * a_Data, size_t a_Length);
 
 	/** Calculates and returns the final checksum */
 	void Finalize(Checksum & a_Output);
 
 	/** Returns true if the object is accepts more input data, false if Finalize()-d (need to Restart()) */
-	bool DoesAcceptInput(void) const { return m_DoesAcceptInput; }
+	bool DoesAcceptInput() const { return m_DoesAcceptInput; }
 
 	/** Converts a SHA1 digest into hex */
-	static void DigestToHex(const Checksum & a_Digest, AString & a_Out);
+	static void DigestToHex(const Checksum & a_Digest, std::string & a_Out);
 
 	/** Converts a raw 160-bit SHA1 digest into a Java Hex representation
 	According to http://wiki.vg/Protocol_Encryption
 	*/
-	static void DigestToJava(const Checksum & a_Digest, AString & a_Out);
+	static void DigestToJava(const Checksum & a_Digest, std::string & a_Out);
 
 	/** Clears the current context and start a new checksum calculation */
-	void Restart(void);
+	void Restart();
 
 protected:
 	/** True if the object is accepts more input data, false if Finalize()-d (need to Restart()) */

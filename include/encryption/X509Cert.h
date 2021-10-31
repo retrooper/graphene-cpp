@@ -28,11 +28,12 @@ public:
 	Returns 0 on succes, or mbedTLS error code on failure. */
 	int Parse(const void * a_CertContents, size_t a_Size);
 
+/** Returns the internal cert ptr. Only use in mbedTLS API calls. */
+mbedtls_x509_crt * GetInternal(void) { return &m_Cert; }
+
 protected:
 	mbedtls_x509_crt m_Cert;
 
-	/** Returns the internal cert ptr. Only use in mbedTLS API calls. */
-	mbedtls_x509_crt * GetInternal(void) { return &m_Cert; }
 } ;
 
 typedef std::shared_ptr<cX509Cert> cX509CertPtr;

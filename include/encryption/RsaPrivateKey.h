@@ -40,7 +40,7 @@ public:
 	/** Decrypts the data using RSAES-PKCS#1 algorithm.
 	Both a_EncryptedData and a_DecryptedData must be at least <KeySizeBytes> bytes large.
 	Returns the number of bytes decrypted, or negative number for error. */
-	int Decrypt(std::vector<uint8_t> a_EncryptedData, char * a_DecryptedData, size_t a_DecryptedMaxLength);
+	int Decrypt(std::vector<uint8_t> a_EncryptedData, uint8_t * a_DecryptedData, size_t a_DecryptedMaxLength);
 
 protected:
 	/** The mbedTLS key context */

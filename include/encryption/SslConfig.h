@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include <vector>
+#include <memory>
 #include "mbedtls/ssl.h"
 
 // fwd:

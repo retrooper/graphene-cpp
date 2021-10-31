@@ -10,7 +10,7 @@
 
 cRsaPrivateKey::cRsaPrivateKey(void)
 {
-	mbedtls_rsa_init(&m_Rsa, MBEDTLS_RSA_PKCS_V15, 0);
+	mbedtls_rsa_init(&m_Rsa);
 	m_CtrDrbg.Initialize("RSA", 3);
 }
 
@@ -20,7 +20,7 @@ cRsaPrivateKey::cRsaPrivateKey(void)
 
 cRsaPrivateKey::cRsaPrivateKey(const cRsaPrivateKey & a_Other)
 {
-	mbedtls_rsa_init(&m_Rsa, MBEDTLS_RSA_PKCS_V15, 0);
+	mbedtls_rsa_init(&m_Rsa);
 	mbedtls_rsa_copy(&m_Rsa, &a_Other.m_Rsa);
 	m_CtrDrbg.Initialize("RSA", 3);
 }
@@ -65,12 +65,12 @@ std::vector<char> cRsaPrivateKey::GetPubKeyDER(void)
 			if (mbedtls_pk_setup(&m_Key, mbedtls_pk_info_from_type(MBEDTLS_PK_RSA)) != 0)
 			{
 				std::cerr << "Failed to init private key!" << std::endl;
-				return {};
+				return;
 			}
 			if (mbedtls_rsa_copy(mbedtls_pk_rsa(m_Key), a_Rsa) != 0)
 			{
                 std::cerr << "Failed to init private key to pk context!" << std::endl;
-				return {};
+				return;
 			}
 			m_IsValid = true;
 		}
@@ -107,7 +107,7 @@ std::vector<char> cRsaPrivateKey::GetPubKeyDER(void)
 
 
 
-int cRsaPrivateKey::Decrypt(const std::vector<uint8_t> a_EncryptedData, char* a_DecryptedData, size_t a_DecryptedMaxLength)
+int cRsaPrivateKey::Decrypt(const std::vector<uint8_t> a_EncryptedData, uint8_t* a_DecryptedData, size_t a_DecryptedMaxLength)
 {
 	if (a_EncryptedData.size() < m_Rsa.private_len)
 	{
@@ -120,9 +120,8 @@ int cRsaPrivateKey::Decrypt(const std::vector<uint8_t> a_EncryptedData, char* a_
 	}
 	size_t DecryptedLength;
 	int res = mbedtls_rsa_pkcs1_decrypt(
-		&m_Rsa, mbedtls_ctr_drbg_random, m_CtrDrbg.GetInternal(), MBEDTLS_RSA_PRIVATE, &DecryptedLength,
-		reinterpret_cast<const unsigned char *>(a_EncryptedData.data()), a_DecryptedData, a_DecryptedMaxLength
-	);
+		&m_Rsa, mbedtls_ctr_drbg_random, m_CtrDrbg.GetInternal(), &DecryptedLength,
+		reinterpret_cast<const unsigned char *>(a_EncryptedData.data()), a_DecryptedData, a_DecryptedMaxLength);
 	if (res != 0)
 	{
 		return -1;

@@ -56,6 +56,9 @@ public:
 	/** Returns true if the contained key is valid. */
 	bool IsValid() const;
 
+/** Returns the internal context ptr. Only use in mbedTLS API calls. */
+mbedtls_pk_context * GetInternal(void) { return &m_Pk; }
+
 protected:
 	/** The mbedTLS representation of the key data */
 	mbedtls_pk_context m_Pk;
@@ -64,8 +67,6 @@ protected:
 	cCtrDrbgContext m_CtrDrbg;
 
 
-	/** Returns the internal context ptr. Only use in mbedTLS API calls. */
-	mbedtls_pk_context * GetInternal(void) { return &m_Pk; }
 } ;
 
 typedef std::shared_ptr<cCryptoKey> cCryptoKeyPtr;

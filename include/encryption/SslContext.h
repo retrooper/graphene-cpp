@@ -9,8 +9,9 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
 #include "mbedtls/ssl.h"
-#include "../ByteBuffer.h"
 
 
 
@@ -36,7 +37,7 @@ class cSslContext abstract
 {
 public:
 	/** Creates a new uninitialized context */
-	cSslContext(void);
+	cSslContext();
 
 	virtual ~cSslContext();
 
@@ -49,12 +50,12 @@ public:
 	int Initialize(bool a_IsClient);
 
 	/** Returns true if the object has been initialized properly. */
-	bool IsValid(void) const { return m_IsValid; }
+	bool IsValid() const { return m_IsValid; }
 
 	/** Sets the SSL peer name expected for this context. Must be called after Initialize().
 	\param a_ExpectedPeerName CommonName that we expect the SSL peer to have in its cert,
 	if it is different, the verification will fail. An empty string will disable the CN check. */
-	void SetExpectedPeerName(const AString & a_ExpectedPeerName);
+	void SetExpectedPeerName(const std::string & a_ExpectedPeerName);
 
 	/** Writes data to be encrypted and sent to the SSL peer. Will perform SSL handshake, if needed.
 	Returns the number of bytes actually written, or mbedTLS error code.
@@ -77,14 +78,14 @@ public:
 	If the return value is MBEDTLS_ERR_SSL_WANT_READ or MBEDTLS_ERR_SSL_WANT_WRITE, the owner should send any
 	cached outgoing data to the SSL peer and write any incoming data received from the SSL peer and then call
 	this function again. Note that this may repeat a few times before the handshake is completed. */
-	int Handshake(void);
+	int Handshake();
 
 	/** Returns true if the SSL handshake has been completed. */
-	bool HasHandshaken(void) const { return m_HasHandshaken; }
+	bool HasHandshaken() const { return m_HasHandshaken; }
 
 	/** Notifies the SSL peer that the connection is being closed.
 	Returns 0 on success, mbedTLS error code on failure. */
-	int NotifyClose(void);
+	int NotifyClose();
 
 protected:
 

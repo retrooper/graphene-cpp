@@ -1,6 +1,4 @@
 
-#include "Globals.h"
-
 #include "SslConfig.h"
 #include "EntropyContext.h"
 #include "CtrDrbgContext.h"
@@ -146,7 +144,6 @@ void cSslConfig::SetAuthMode(const eSslAuthMode a_AuthMode)
 			case eSslAuthMode::Required: return MBEDTLS_SSL_VERIFY_REQUIRED;
 			case eSslAuthMode::Unset:    return MBEDTLS_SSL_VERIFY_UNSET;
 		}
-		UNREACHABLE("Unsupported SSL auth mode");
 	}();
 
 	mbedtls_ssl_conf_authmode(&m_Config, Mode);
@@ -158,7 +155,6 @@ void cSslConfig::SetAuthMode(const eSslAuthMode a_AuthMode)
 
 void cSslConfig::SetRng(cCtrDrbgContextPtr a_CtrDrbg)
 {
-	ASSERT(a_CtrDrbg != nullptr);
 	m_CtrDrbg = std::move(a_CtrDrbg);
 	mbedtls_ssl_conf_rng(&m_Config, mbedtls_ctr_drbg_random, &m_CtrDrbg->m_CtrDrbg);
 }
@@ -178,8 +174,6 @@ void cSslConfig::SetDebugCallback(cDebugCallback a_CallbackFun, void * a_Callbac
 
 void cSslConfig::SetOwnCert(cX509CertPtr a_OwnCert, cCryptoKeyPtr a_OwnCertPrivKey)
 {
-	ASSERT(a_OwnCert != nullptr);
-	ASSERT(a_OwnCertPrivKey != nullptr);
 
 	// Make sure we have the cert stored for later, mbedTLS only uses the cert later on
 	m_OwnCert = std::move(a_OwnCert);
