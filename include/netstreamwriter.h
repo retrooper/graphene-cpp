@@ -5,6 +5,7 @@
 #include <cinttypes>
 #include <string>
 #include <codecvt>
+
 namespace graphene {
     class netstreamwriter {
         int index;
@@ -21,23 +22,23 @@ namespace graphene {
             this->index = index;
         }
 
-        void write_bytes(const std::vector<char>& bytes, int offset, int len) {
+        void write_bytes(const std::vector<char> &bytes, int offset, int len) {
             for (int i = offset; i < len; i++) {
                 data.push_back(bytes[i]);
             }
         }
 
-        void write_bytes(const std::vector<char>& bytes, int len) {
+        void write_bytes(const std::vector<char> &bytes, int len) {
             write_bytes(bytes, 0, len);
         }
 
-        void write_bytes(const std::vector<char>& bytes) {
+        void write_bytes(const std::vector<char> &bytes) {
             write_bytes(bytes, 0, bytes.size());
         }
 
 
         void write_byte(int val) {
-            data.push_back((char)val);
+            data.push_back((char) val);
         }
 
         void write_bool(bool val) {
@@ -77,34 +78,44 @@ namespace graphene {
         }
 
         void write_float(float val) {
-            //TODO Handle SpAain
-            write_utf_8(std::to_string(val));
+            int i;
+            memcpy(&i, &val, sizeof(int));
+            write_int(i);
         }
 
         void write_double(double val) {
-            //TODO yes
-            write_utf_8(std::to_string(val));
+            long i;
+            memcpy(&i, &val, sizeof(long));
+            write_long(i);
         }
 
-        void write_utf_8(std::string msg, const uint64_t maxSize = 32767) {
+        void write_utf_8(const std::string &msg, const uint64_t maxSize = 32767) {
             uint32_t len = msg.length();
             if (len > maxSize) {
-                throw std::runtime_error("String is too large! Maximum size: " + std::to_string(maxSize) + ", size: " + std::to_string(len));
+                throw std::runtime_error("String is too large! Maximum size: " + std::to_string(maxSize) + ", size: " +
+                                         std::to_string(len));
             }
             write_var_int(len);
-            for (char b : msg) {
+            for (char b: msg) {
                 write_byte(b);
+            }
+        }
+
+        void write_utf_8_array(const std::vector<std::string> &messages, const uint64_t maxSize = 32767) {
+            for (const std::string &msg: messages) {
+                write_utf_8(msg, maxSize);
             }
         }
 
         void write_utf_16(std::u16string msg, const uint64_t maxSize = 32767) {
             uint32_t len = msg.length();
             if (len > maxSize) {
-                throw std::runtime_error("String is too large! Maximum size: " + std::to_string(maxSize) + ", size: " + std::to_string(len));
+                throw std::runtime_error("String is too large! Maximum size: " + std::to_string(maxSize) + ", size: " +
+                                         std::to_string(len));
             }
             write_var_int(len);
-            std::wstring_convert<std::codecvt<char16_t,char,std::mbstate_t>,char16_t> convert;
-            for (char b : msg) {
+            std::wstring_convert<std::codecvt<char16_t, char, std::mbstate_t>, char16_t> convert;
+            for (char b: msg) {
                 write_byte(b);
             }
         }

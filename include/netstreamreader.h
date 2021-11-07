@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <codecvt>
 #include <iostream>
+
 namespace graphene {
     class netstreamreader {
         int index;
@@ -46,55 +47,72 @@ namespace graphene {
             return remainingBytes;
         }
 
-        std::vector<uint64_t> read_unsigned_bytes(uint64_t len) {
-            std::vector<uint64_t> remainingBytes(len);
-            int length = index + len;
-            for (uint64_t i = index; i < length; i++) {
-                remainingBytes.push_back(data[i] & 255);
-                index = i;
+
+        bool read_buf(void *buffer, uint64_t len) {
+            char *Dst = static_cast<char *>(buffer);  // So that we can do byte math
+            uint64_t BytesToEndOfBuffer = remaining_byte_count();
+            if (BytesToEndOfBuffer <= len) {
+                // Reading across the ringbuffer end, read the first part and adjust parameters:
+                if (BytesToEndOfBuffer > 0) {
+                    memcpy(Dst, data.data() + index, BytesToEndOfBuffer);
+                    Dst += BytesToEndOfBuffer;
+                    len -= BytesToEndOfBuffer;
+                }
+                index = 0;
             }
-            index++;
-            return remainingBytes;
+
+            // Read the rest of the bytes in a single read (guaranteed to fit):
+            if (len > 0) {
+                memcpy(Dst, data.data() + index, len);
+                index += len;
+            }
+            return true;
         }
 
-        char read_byte() {
-            return data[index++];
+
+        int8_t read_byte() {
+            char result;
+            read_buf(&result, 1);
+            return result;
         }
 
-        short read_unsigned_byte() {
-            return (short) (read_byte() & 255);
+
+        uint8_t read_unsigned_byte() {
+            uint8_t result;
+            read_buf(&result, 1);
+            return result;
         }
 
         bool read_bool() {
             return read_byte() != 0;
         }
 
-        short read_short() {
-            char a = read_byte();
-            char b = read_byte();
-            return (short) ((a << 8) + (b << 0));
+        int16_t read_short() {
+            uint16_t a = read_unsigned_short();
+            int16_t result;
+            memcpy(&result, &a, 2);
+            return result;
         }
 
-        int read_unsigned_short() {
-            int a = read_unsigned_byte();
-            int b = read_unsigned_byte();
-            return (int) ((a << 8) + (b << 0));
+        uint16_t read_unsigned_short() {
+            uint16_t result;
+            read_buf(&result, 2);
+            result = ntohs(result);
+            return result;
         }
 
-        int read_int() {
-            int a = read_unsigned_byte();
-            int b = read_unsigned_byte();
-            int c = read_unsigned_byte();
-            int d = read_unsigned_byte();
-            return (int)(a << 24) + (b << 16) + (c << 8) + (d << 0);
+        int32_t read_int() {
+            uint32_t a = read_unsigned_int();
+            int32_t result;
+            memcpy(&result, &a, 4);
+            return result;
         }
 
-        long read_unsigned_int() {
-            int a = read_unsigned_byte();
-            int b = read_unsigned_byte();
-            int c = read_unsigned_byte();
-            int d = read_unsigned_byte();
-            return (long)(a << 24) + (b << 16) + (c << 8) + (d << 0);
+        uint32_t read_unsigned_int() {
+            uint32_t result;
+            read_buf(&result, 4);
+            result = ntohl(result);
+            return result;
         }
 
         int read_var_int() {
@@ -110,28 +128,55 @@ namespace graphene {
             return i;
         }
 
-        uint64_t read_long() {
-            std::vector<uint64_t> read = read_unsigned_bytes(8);
-            return (read[0] << 56) + ((read[1] & 255) << 48) + ((read[2] & 255) << 40)
-            + ((read[3] & 255) << 32) + ((read[4] & 255) << 24) + ((read[5] & 255) << 16)
-            + ((read[6] & 255) << 8) + ((read[7] & 255) << 0);
+        int64_t read_long() {
+            int64_t a;
+            read_buf(&a, 8);
+
+            uint64_t buf;
+            memcpy(&buf, &a, 8);
+            buf = (((static_cast<uint64_t>(ntohl(static_cast<uint32_t>(buf)))) << 32) + ntohl(buf >> 32));
+            return *reinterpret_cast<int64_t *>(&buf);
+        }
+
+        uint64_t read_unsigned_long() {
+            uint64_t a;
+            read_buf(&a, 8);
+
+            uint64_t buf;
+            memcpy(&buf, &a, 8);
+            buf = ntohll(buf);
+            return buf;
         }
 
         float read_float() {
-            //TODO Pain
-            return std::stof(read_utf_8());
+            float a;
+            read_buf(&a, 4);
+
+            uint32_t buf;
+            float x;
+            memcpy(&buf, &a, 4);
+            buf = ntohl(buf);
+            memcpy(&x, &buf, sizeof(float));
+            return x;
         }
 
         double read_double() {
-            //TODO Handle sPain
-            return std::stod(read_utf_8());
+            double a;
+            read_buf(&a, 8);
 
+            uint64_t buf;
+            memcpy(&buf, &a, 8);
+            buf = ntohll(buf);
+            double x;
+            memcpy(&x, &buf, sizeof(double));
+            return x;
         }
 
         std::string read_utf_8(const uint64_t &maxSize = 32767) {
             int len = read_var_int();
             if (len > maxSize) {
-                throw std::runtime_error("Failed to read string, because it is too large! Max size: " + std::to_string(maxSize));
+                throw std::runtime_error(
+                        "Failed to read string, because it is too large! Max size: " + std::to_string(maxSize));
             }
             std::string msg;
             for (int i = 0; i < len; i++) {
@@ -140,10 +185,19 @@ namespace graphene {
             return msg;
         }
 
+        std::vector<std::string> read_utf_8_array(const int &count, const uint64_t &maxSize = 32767) {
+            std::vector<std::string> messages;
+            for (int i = 0; i < count; i++) {
+                messages.push_back(read_utf_8(maxSize));
+            }
+            return messages;
+        }
+
         std::u16string read_utf_16(const uint64_t &maxSize = 32767) {
             int len = read_var_int();
             if (len > maxSize) {
-                throw std::runtime_error("Failed to read string, because it is too large! Max size: " + std::to_string(maxSize));
+                throw std::runtime_error(
+                        "Failed to read string, because it is too large! Max size: " + std::to_string(maxSize));
             }
             std::u16string msg;
             for (int i = 0; i < len; i++) {

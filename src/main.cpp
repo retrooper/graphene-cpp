@@ -8,17 +8,19 @@
 #include "packet.h"
 #include "connectionstate.h"
 #include <unordered_map>
-
 #include "nlohmann/json.hpp"
+
 namespace kn = kissnet;
 
 std::unordered_map<kissnet::tcp_socket *, graphene::connectionstate> connectionStates;
-const int SERVER_PROTOCOL_VERSION = 756;//47
+int MAX_PLAYERS = 100;
+int SERVER_PROTOCOL_VERSION = 756;//47
 const std::string SERVER_VERSION_STRING = "1.17.1";
 graphene::server mcServer;
 
+int expectedTeleportID;
 void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, const graphene::connectionstate &state,
-            const int &id, kn::buffer<1024> &rawBuff, uint32_t rawBuffSize) {
+            const int &id, kn::buffer<50000> &rawBuff, uint32_t rawBuffSize) {
     switch (state) {
         case graphene::HANDSHAKING: {
             graphene::handshaking::client::packethandshake handshake;
@@ -76,7 +78,7 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                 j["version"]["protocol"] = SERVER_PROTOCOL_VERSION;
 
                 j["players"] = nullptr;
-                j["players"]["max"] = 100;
+                j["players"]["max"] = MAX_PLAYERS;
                 j["players"]["online"] = 5;
                 j["description"] = nullptr;
                 j["description"]["text"] = "Best mc server";
@@ -97,17 +99,63 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                 case 0x00: {
                     graphene::login::client::packetloginstart loginStart;
                     loginStart.decode(reader);
-                    std::cout << "User " << loginStart.username << " has requested to log onto the server!" << std::endl;
-                    graphene::login::server::packetencryptionrequest encryptionRequest;
-                    encryptionRequest.serverID = "";
-                    encryptionRequest.publicKey = {};
+                    graphene::login::server::packetloginsuccess loginSuccess;
+                    loginSuccess.username = loginStart.username;
+                    loginSuccess.userUUID = graphene::uuid::generate_uuid();
+                    std::cout << "UUID: " << loginSuccess.userUUID.to_string() << std::endl;
+                    graphene::send_packet(socket, loginSuccess);
+                    connectionStates[&socket] = graphene::PLAY;
+                    std::cout << "User " << loginSuccess.username << " has successfully logged onto the server!"
+                              << std::endl;
+
+                    graphene::play::server::packetjoingame joinGame;
+                    joinGame.entityID = 1;
+                    joinGame.isHardcore = false;
+                    joinGame.gameMode = SURVIVAL;
+                    joinGame.previousGameMode = SURVIVAL;
+                    joinGame.worldNames = {"minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"};
+                    std::vector<char> DIMENSION_CODEC_BYTES = mcServer.read_file_bytes("RawCodec.bytes");
+                    std::vector<char> DIMENSION_BYTES = mcServer.read_file_bytes("RawDimensions.bytes");
+                    joinGame.dimensionCodecBytes = DIMENSION_CODEC_BYTES;
+                    joinGame.dimensionBytes = DIMENSION_BYTES;
+                    joinGame.worldName = "minecraft:overworld";
+                    joinGame.seed = 0L;
+                    joinGame.maxPlayers = MAX_PLAYERS;
+                    joinGame.viewDistance = 16;
+                    joinGame.reducedDebugInfo = false;
+                    joinGame.enableRespawnScreen = true;
+                    joinGame.isDebug = false;
+                    joinGame.isFlat = true;
+
+                    //Send the join game packet
+                    graphene::send_packet(socket, joinGame);
+                    std::cout << "Sent join game packet" << std::endl;
+
+                    graphene::play::server::packetpluginmessage pluginMessage;
+                    pluginMessage.channel = "minecraft:brand";
+                    pluginMessage.data = "Graphene";
+                    graphene::send_packet(socket, pluginMessage);
+                    std::cout << "Informed client about our brand." << std::endl;
+
+                    graphene::play::server::packetentitystatus entityStatus;
+                    entityStatus.entityID = 1;
+                    entityStatus.status = 24;
+                    graphene::send_packet(socket, entityStatus);
+
+                    graphene::play::server::packetpositionandlook positionAndLook;
+                    positionAndLook.x = 0;
+                    positionAndLook.y = 0;
+                    positionAndLook.z = 0;
+                    positionAndLook.yaw = 0;
+                    positionAndLook.pitch = 0;
+                    positionAndLook.flags = 0;
+                    expectedTeleportID = rand();
+                    positionAndLook.teleportID = expectedTeleportID;
+                    graphene::send_packet(socket, positionAndLook);
                     break;
                 }
                 case 0x01: {
                     std::cout << "yes" << std::endl;
-                    break;
-                }
-                case 0x02: {
                     break;
                 }
                 default: {
@@ -117,14 +165,56 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
             break;
         }
         case graphene::PLAY: {
+            switch (id) {
+                case 0x11: {
+                    graphene::play::client::packetposition position;
+                    position.decode(reader);
+                    std::cout << "Pos only: " << position.x << ", " << position.y << ", " << position.z << std::endl;
+                }
+                case 0x12: {
+                    graphene::play::client::packetpositionandrotation positionAndRotation;
+                    positionAndRotation.decode(reader);
+                    std::cout << "Position: " << positionAndRotation.x << ", " << positionAndRotation.y << ", "
+                              << positionAndRotation.z << std::endl;
+                    std::cout << "Rotation: " << positionAndRotation.yaw << ", " << positionAndRotation.pitch << std::endl;
+                    break;
+                }
+                case 0x0A: {
+                    graphene::play::client::packetpluginmessage pluginMessage;
+                    pluginMessage.decode(reader);
 
+                    std::cout << "Received plugin message: " << pluginMessage.channel << std::endl;
+                    std::cout << "Data: " << pluginMessage.data << std::endl;
+                    break;
+                }
+                case 0x05: {
+                    graphene::play::client::packetclientsettings settings;
+                    settings.decode(reader);
+                    std::cout << "Locale: " << settings.locale << ", main hand: " << settings.mainHand << std::endl;
+                    break;
+                }
+                case 0x00: {
+                    graphene::play::client::packetteleportconfirm teleportConfirm;
+                    teleportConfirm.decode(reader);
+                    if (expectedTeleportID == teleportConfirm.teleportID) {
+                        std::cout << "Teleport confirmed" << std::endl;
+                    } else {
+                        std::cout << "Teleport ID mismatch" << std::endl;
+                    }
+                    break;
+                }
+                default: {
+                    std::cout << "Unknown packet ID: " << id << std::endl;
+                    break;
+                }
+            }
             break;
         }
     }
 
 }
 
-void process_incoming_packet(kissnet::tcp_socket &socket, uint32_t size, kn::buffer<1024> &buff) {
+void process_incoming_packet(kissnet::tcp_socket &socket, uint32_t size, kn::buffer<50000> &buff) {
     char *charBytes = reinterpret_cast<char *>(buff.data());
     std::vector<char> data(charBytes, charBytes + size);
     graphene::netstreamreader reader(data);
@@ -133,10 +223,11 @@ void process_incoming_packet(kissnet::tcp_socket &socket, uint32_t size, kn::buf
         graphene::connectionstate state = connectionStates[&socket];
         int length = reader.read_var_int();
         int id = reader.read_var_int();
+        //std::cout << "len: " << length << ", id: " << id << std::endl;
+        //std::cout << "rbc: " << reader.remaining_byte_count() << std::endl;
         handle(socket, reader, state, id, buff, size);
         keepProcessing = reader.remaining_byte_count() != 0;
-        std::cout << "len: " << length << ", id: " << id << std::endl;
-        std::cout << "rbc: " << reader.remaining_byte_count() << std::endl;
+
     }
 
     //socket.send(buff, size);
@@ -144,7 +235,7 @@ void process_incoming_packet(kissnet::tcp_socket &socket, uint32_t size, kn::buf
 
 int main(int argc, char *argv[]) {
     std::cout << "Starting server!" << std::endl;
-    mcServer.initEncryption();
+    mcServer.init_encryption();
     std::cout << "Initialized encryption!" << std::endl;
     //Configuration (by default)
     kn::port_t port = 999;
@@ -192,7 +283,7 @@ int main(int argc, char *argv[]) {
             //Internal loop
             bool continue_receiving = true;
             //Static 1k buffer
-            kn::buffer<1024> buff;
+            kn::buffer<50000> buff;
 
             //While connection is alive
             while (continue_receiving) {
