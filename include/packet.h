@@ -401,8 +401,8 @@ namespace graphene {
                     writer.write_byte(previousGameMode);
                     writer.write_var_int(worldNames.size());
                     writer.write_utf_8_array(worldNames);
-                    writer.write_nbt(dimensionCodecBytes);
-                    writer.write_nbt(dimensionBytes);
+                    writer.write_nbt(dimensionCodec);
+                    writer.write_nbt(dimension);
                     writer.write_utf_8(worldName);
                     writer.write_long(seed);
                     writer.write_var_int(maxPlayers);
