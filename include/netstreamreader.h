@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <codecvt>
 #include <iostream>
+#include <optional>
+#include "nbt.h"
 
 namespace graphene {
     class netstreamreader {
@@ -193,17 +195,76 @@ namespace graphene {
             return messages;
         }
 
-        std::u16string read_utf_16(const uint64_t &maxSize = 32767) {
-            int len = read_var_int();
-            if (len > maxSize) {
-                throw std::runtime_error(
-                        "Failed to read string, because it is too large! Max size: " + std::to_string(maxSize));
+        std::optional<nbt> read_nbt_tag(char id) {
+            switch (id) {
+                case NBT_BYTE_ID:
+                    return nbtbyte(read_byte());
+                case NBT_SHORT_ID:
+                    return nbtshort(read_short());
+                case NBT_INT_ID:
+                    return nbtint(read_int());
+                case NBT_LONG_ID:
+                    return nbtlong(read_long());
+                case NBT_FLOAT_ID:
+                    return nbtfloat(read_float());
+                case NBT_DOUBLE_ID:
+                    return nbtdouble(read_double());
+                case NBT_BYTE_ARRAY_ID: {
+                    std::vector<char> bytes = read_bytes(read_int());
+                    return nbtbytearray(bytes);
+                }
+                case NBT_STRING_ID:
+                    //TODO Look into, see string length
+                    return nbtstring(read_utf_8());
+                case NBT_LIST_ID: {
+                    char type = read_byte();
+                    int size = read_int();
+                    std::vector<nbt> tags(size);
+                    for (int i = 0; i < size; i++) {
+                        tags.push_back(read_nbt_tag(type).value());
+                    }
+                    return nbtlist(type, tags);
+                }
+
+                case NBT_COMPOUND_ID: {
+                    std::unordered_map<std::string, nbt> tags;
+                    char type;
+                    while ((type = read_byte()) != NBT_END_ID) {
+                        std::string name = read_utf_8();
+                        tags[name] = read_nbt_tag(type).value();
+                    }
+                    return nbtcompound(tags);
+                }
+
+                case NBT_INT_ARRAY_ID: {
+                    int size = read_int();
+                    std::vector<int> integers(size);
+                    for (int i = 0; i < size; i++) {
+                        integers.push_back(read_int());
+                    }
+                    return nbtintarray(integers);
+                }
+
+                case NBT_LONG_ARRAY_ID: {
+                    int size = read_int();
+                    std::vector<int64_t> longs(size);
+                    for (int i = 0; i < size; i++) {
+                        longs.push_back(read_long());
+                    }
+                    return nbtlongarray(longs);
+                }
+                default:
+                    return std::nullopt;
             }
-            std::u16string msg;
-            for (int i = 0; i < len; i++) {
-                msg += read_byte();
+        }
+
+        std::optional<nbt> read_nbt() {
+            char id = read_byte();
+            if (id == NBT_END_ID) {
+                return std::nullopt;
             }
-            return msg;
+            std::string tagName = read_utf_8();
+            return read_nbt_tag(id).value();
         }
     };
 }

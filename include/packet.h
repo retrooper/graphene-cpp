@@ -345,6 +345,29 @@ namespace graphene {
         }
 
         namespace server {
+            struct packetsetexperience : public packet {
+                packetsetexperience()  {
+                    id = 0x51;
+                }
+
+                float experienceBar;
+                int level;
+                int totalExperience;
+
+                void decode(graphene::netstreamreader& reader) override {
+                    experienceBar = reader.read_float();
+                    level = reader.read_var_int();
+                    totalExperience = reader.read_var_int();
+                }
+
+                void encode(graphene::netstreamwriter& writer) override {
+                    packet::encode(writer);
+                    writer.write_float(experienceBar);
+                    writer.write_var_int(level);
+                    writer.write_var_int(totalExperience);
+                }
+            };
+
             struct packetjoingame : public packet {
                 packetjoingame() {
                     id = 0x26;
@@ -355,8 +378,8 @@ namespace graphene {
                 gamemode gameMode;
                 gamemode previousGameMode;
                 std::vector<std::string> worldNames;
-                std::vector<char> dimensionCodecBytes;
-                std::vector<char> dimensionBytes;
+                nbtcompound dimensionCodec;
+                nbtcompound dimension;
                 std::string worldName;
                 long seed;
                 int maxPlayers;
@@ -378,8 +401,8 @@ namespace graphene {
                     writer.write_byte(previousGameMode);
                     writer.write_var_int(worldNames.size());
                     writer.write_utf_8_array(worldNames);
-                    writer.write_bytes(dimensionCodecBytes);
-                    writer.write_bytes(dimensionBytes);
+                    writer.write_nbt(dimensionCodecBytes);
+                    writer.write_nbt(dimensionBytes);
                     writer.write_utf_8(worldName);
                     writer.write_long(seed);
                     writer.write_var_int(maxPlayers);

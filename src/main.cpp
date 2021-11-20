@@ -8,6 +8,7 @@
 #include "packet.h"
 #include "connectionstate.h"
 #include <unordered_map>
+#include "nbt.h"
 #include "nlohmann/json.hpp"
 
 namespace kn = kissnet;
@@ -19,6 +20,7 @@ const std::string SERVER_VERSION_STRING = "1.17.1";
 graphene::server mcServer;
 
 int expectedTeleportID;
+
 void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, const graphene::connectionstate &state,
             const int &id, kn::buffer<50000> &rawBuff, uint32_t rawBuffSize) {
     switch (state) {
@@ -41,6 +43,7 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                         socket.close();
                         std::cout << "Disconnected a user due to having a newer client!" << std::endl;
                     } else if (handshake.protocolVersion < SERVER_PROTOCOL_VERSION) {
+                        //Send a packet to the client telling them to update their client
                         graphene::login::server::packetdisconnect disconnect;
                         nlohmann::json reasonJson;
                         reasonJson["text"] = "Your client is outdated... you may not join!";
@@ -107,17 +110,42 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                     connectionStates[&socket] = graphene::PLAY;
                     std::cout << "User " << loginSuccess.username << " has successfully logged onto the server!"
                               << std::endl;
-
                     graphene::play::server::packetjoingame joinGame;
                     joinGame.entityID = 1;
                     joinGame.isHardcore = false;
                     joinGame.gameMode = SURVIVAL;
                     joinGame.previousGameMode = SURVIVAL;
                     joinGame.worldNames = {"minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"};
-                    std::vector<char> DIMENSION_CODEC_BYTES = mcServer.read_file_bytes("RawCodec.bytes");
-                    std::vector<char> DIMENSION_BYTES = mcServer.read_file_bytes("RawDimensions.bytes");
-                    joinGame.dimensionCodecBytes = DIMENSION_CODEC_BYTES;
-                    joinGame.dimensionBytes = DIMENSION_BYTES;
+
+                    joinGame.dimension.set_tag("piglin_safe", nbtbyte(1));
+                    joinGame.dimension.set_tag("natural", nbtbyte(1));
+                    joinGame.dimension.set_tag("ambient_light", nbtfloat(1.0f));
+                    joinGame.dimension.set_tag("infiburn", nbtstring(""));
+                    joinGame.dimension.set_tag("respawn_anchor_works", nbtbyte(1));
+                    joinGame.dimension.set_tag("has_skylight", nbtbyte(1));
+                    joinGame.dimension.set_tag("bed_works", nbtbyte(1));
+                    joinGame.dimension.set_tag("effects", nbtstring("minecraft:overworld"));
+                    joinGame.dimension.set_tag("has_raids", nbtbyte(1));
+                    joinGame.dimension.set_tag("min_y", nbtint(-256));//TODO Change
+                    joinGame.dimension.set_tag("height", nbtint(256));//TODO Change
+                    joinGame.dimension.set_tag("logical_height", nbtint(256));//0-256
+                    joinGame.dimension.set_tag("coordinate_scale", nbtfloat(1.0f));
+                    joinGame.dimension.set_tag("ultrawarm", nbtbyte(0));
+                    joinGame.dimension.set_tag("has_ceiling", nbtbyte(1));
+                    //TODO Finish
+
+                    nbtcompound dimensionTypeCompound;
+                    dimensionTypeCompound.set_tag("type", nbtstring("minecraft:dimension_type"));
+                    nbtlist dimensionTypeRegistries(NBT_COMPOUND_ID);
+                    nbtcompound dimensionTypeReg;
+                    dimensionTypeReg.set_tag("name", nbtstring("minecraft:overworld"));
+                    dimensionTypeReg.set_tag("id", nbtint(0));
+                    dimensionTypeReg.set_tag("element", joinGame.dimension);//TODO Confirm if right?
+                    dimensionTypeRegistries.tags.push_back(dimensionTypeReg);
+                    dimensionTypeCompound.set_tag("value", dimensionTypeRegistries);
+                    nbtcompound worldGenCompound;
+                    joinGame.dimensionCodec.set_tag("minecraft:dimension_type", dimensionTypeCompound);
+                    //TODO Biome stuff
                     joinGame.worldName = "minecraft:overworld";
                     joinGame.seed = 0L;
                     joinGame.maxPlayers = MAX_PLAYERS;
@@ -174,9 +202,9 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                 case 0x12: {
                     graphene::play::client::packetpositionandrotation positionAndRotation;
                     positionAndRotation.decode(reader);
-                    std::cout << "Position: " << positionAndRotation.x << ", " << positionAndRotation.y << ", "
-                              << positionAndRotation.z << std::endl;
-                    std::cout << "Rotation: " << positionAndRotation.yaw << ", " << positionAndRotation.pitch << std::endl;
+                    std::cout << "Pos and rotation: " << positionAndRotation.x << ", " << positionAndRotation.y << ", "
+                              << positionAndRotation.z << ", " << positionAndRotation.yaw << ", "
+                              << positionAndRotation.pitch << std::endl;
                     break;
                 }
                 case 0x0A: {
@@ -234,16 +262,12 @@ void process_incoming_packet(kissnet::tcp_socket &socket, uint32_t size, kn::buf
 }
 
 int main(int argc, char *argv[]) {
+    //TODO Proper encryption
     std::cout << "Starting server!" << std::endl;
     mcServer.init_encryption();
     std::cout << "Initialized encryption!" << std::endl;
     //Configuration (by default)
     kn::port_t port = 999;
-    //If specified : get port from command line
-    if (argc >= 2) {
-        port = kn::port_t(strtoul(argv[1], nullptr, 10));
-    }
-
     //We need to store thread objects somewhere:
     std::vector<std::thread> threads;
     //We need to store socket objects somewhere
@@ -271,7 +295,7 @@ int main(int argc, char *argv[]) {
     //Let that thread run alone
     run_th.detach();
 
-    //Loop that continously accept connections
+    //Loop that continuously accept connections
     while (true) {
         std::cout << "Waiting for a client on port " << port << std::endl;
         sockets.emplace_back(listen_socket.accept());
