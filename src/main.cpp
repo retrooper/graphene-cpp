@@ -31,6 +31,7 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                 connectionStates[&socket] = handshake.nextState;
                 if (handshake.nextState == graphene::STATUS) {
                     connectionStates[&socket] = graphene::STATUS;
+                    std::cout << "A user with protocol version " << handshake.protocolVersion << " is viewing the server." << std::endl;
                 } else if (handshake.nextState == graphene::LOGIN) {
                     if (handshake.protocolVersion > SERVER_PROTOCOL_VERSION) {
                         graphene::login::server::packetdisconnect disconnect;
@@ -55,6 +56,7 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                         std::cout << "Disconnected a user due to having an outdated client!" << std::endl;
                     } else {
                         connectionStates[&socket] = graphene::LOGIN;
+                        std::cout << "A user with protocol version " << handshake.protocolVersion << " is joining the server." << std::endl;
                     }
                 } else {
                     //Throw error
@@ -70,6 +72,7 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
         }
         case graphene::STATUS: {
             if (id == 0x00) {
+                //TODO Redundant object creation
                 graphene::status::client::packetrequest request;
                 request.decode(reader);
 
@@ -87,10 +90,14 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                 j["description"]["text"] = "Best mc server";
                 response.jsonResponse = j.dump();
                 graphene::send_packet(socket, response);
+                std::cout << "Sent response, now expecting a ping packet form client!" << std::endl;
+                std::cout << "rem bytes: " << reader.remaining_byte_count() << std::endl;
             } else if (id == 0x01) {
                 reader.finish();
                 socket.send(rawBuff, rawBuffSize);
+                connectionStates.erase(&socket);
                 socket.close();
+                std::cout << "Closed!" << std::endl;
             } else {
                 std::cout << "Received invalid packet: " << id << std::endl;
             }
@@ -117,35 +124,97 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                     joinGame.previousGameMode = SURVIVAL;
                     joinGame.worldNames = {"minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"};
 
-                    joinGame.dimension.set_tag("piglin_safe", nbtbyte(1));
-                    joinGame.dimension.set_tag("natural", nbtbyte(1));
-                    joinGame.dimension.set_tag("ambient_light", nbtfloat(1.0f));
-                    joinGame.dimension.set_tag("infiburn", nbtstring(""));
-                    joinGame.dimension.set_tag("respawn_anchor_works", nbtbyte(1));
-                    joinGame.dimension.set_tag("has_skylight", nbtbyte(1));
-                    joinGame.dimension.set_tag("bed_works", nbtbyte(1));
-                    joinGame.dimension.set_tag("effects", nbtstring("minecraft:overworld"));
-                    joinGame.dimension.set_tag("has_raids", nbtbyte(1));
-                    joinGame.dimension.set_tag("min_y", nbtint(-256));//TODO Change
-                    joinGame.dimension.set_tag("height", nbtint(256));//TODO Change
-                    joinGame.dimension.set_tag("logical_height", nbtint(256));//0-256
-                    joinGame.dimension.set_tag("coordinate_scale", nbtfloat(1.0f));
-                    joinGame.dimension.set_tag("ultrawarm", nbtbyte(0));
-                    joinGame.dimension.set_tag("has_ceiling", nbtbyte(1));
-                    //TODO Finish
+                    nbtbool piglinSafe(true);
+                    nbtbool natural(true);
+                    nbtfloat ambientLight(1.0f);
+                    nbtstring infiburn("");
+                    nbtbool respawnAnchorWorks(true);
+                    nbtbool skylight(true);
+                    nbtbool bedWorks(true);
+                    nbtstring effectsDimension("minecraft:overworld");
+                    nbtbool raids(true);
+                    nbtint minY(-256);
+                    nbtint height(256);
+                    nbtint logicalHeight(256);
+                    nbtfloat coordinateScale(1.0f);
+                    nbtbool ultraWarm(false);
+                    nbtbool ceiling(true);
 
+                    joinGame.dimension.set_tag("piglin_safe", &piglinSafe);
+                    joinGame.dimension.set_tag("natural", &natural);
+                    joinGame.dimension.set_tag("ambient_light", &ambientLight);
+                    joinGame.dimension.set_tag("infiburn", &infiburn);
+                    joinGame.dimension.set_tag("respawn_anchor_works", &respawnAnchorWorks);
+                    joinGame.dimension.set_tag("has_skylight", &skylight);
+                    joinGame.dimension.set_tag("bed_works", &bedWorks);
+                    joinGame.dimension.set_tag("effects", &effectsDimension);
+                    joinGame.dimension.set_tag("has_raids", &raids);
+                    joinGame.dimension.set_tag("min_y", &minY);//TODO Change
+                    joinGame.dimension.set_tag("height", &height);//TODO Change
+                    joinGame.dimension.set_tag("logical_height", &logicalHeight);//0-256
+                    joinGame.dimension.set_tag("coordinate_scale", &coordinateScale);
+                    joinGame.dimension.set_tag("ultrawarm", &ultraWarm);
+                    joinGame.dimension.set_tag("has_ceiling", &ceiling);
+
+                    //Dimension type compound
                     nbtcompound dimensionTypeCompound;
-                    dimensionTypeCompound.set_tag("type", nbtstring("minecraft:dimension_type"));
+                    nbtstring dimensionType("minecraft:dimension_type");
+                    dimensionTypeCompound.set_tag("type", &dimensionType);
                     nbtlist dimensionTypeRegistries(NBT_COMPOUND_ID);
                     nbtcompound dimensionTypeReg;
-                    dimensionTypeReg.set_tag("name", nbtstring("minecraft:overworld"));
-                    dimensionTypeReg.set_tag("id", nbtint(0));
-                    dimensionTypeReg.set_tag("element", joinGame.dimension);//TODO Confirm if right?
-                    dimensionTypeRegistries.tags.push_back(dimensionTypeReg);
-                    dimensionTypeCompound.set_tag("value", dimensionTypeRegistries);
+                    nbtstring dimensionName("minecraft:overworld");
+                    nbtint dimensionIndex(0);
+                    dimensionTypeReg.set_tag("name", &dimensionName);
+                    dimensionTypeReg.set_tag("id", &dimensionIndex);
+                    dimensionTypeReg.set_tag("element", &joinGame.dimension);//TODO Confirm if right?
+                    dimensionTypeRegistries.tags.push_back(&dimensionTypeReg);
+                    dimensionTypeCompound.set_tag("value", &dimensionTypeRegistries);
                     nbtcompound worldGenCompound;
-                    joinGame.dimensionCodec.set_tag("minecraft:dimension_type", dimensionTypeCompound);
-                    //TODO Biome stuff
+                    //Worldgen/biome compound
+                    nbtcompound worldGenBiomeCompound;
+                    nbtstring worldGenBiomeType("minecraft:worldgen/biome");
+
+                    worldGenBiomeCompound.set_tag("type", &worldGenBiomeType);
+                    nbtlist worldGenBiomeRegistries(NBT_COMPOUND_ID);
+                    nbtcompound worldGenBiomeReg;
+                    nbtstring worldGenBiomeName("minecraft:ocean");
+                    nbtint worldGenBiomeIndex(0);
+
+                    worldGenBiomeReg.set_tag("name", &worldGenBiomeName);
+
+                    worldGenBiomeReg.set_tag("id", &worldGenBiomeIndex);
+
+                    nbtcompound biomeProperties;
+                    nbtstring precipitation("rain");
+                    biomeProperties.set_tag("precipitation", &precipitation);
+                    nbtfloat depth(1.6f);
+                    biomeProperties.set_tag("depth", &depth);
+                    nbtfloat temperature(1.0f);
+                    biomeProperties.set_tag("temperature", &temperature);
+                    nbtfloat scale(1.0f);
+                    biomeProperties.set_tag("scale", &scale);
+                    nbtfloat downfall(0.5f);
+                    biomeProperties.set_tag("downfall", &downfall);
+                    nbtstring category("ocean");
+                    biomeProperties.set_tag("category", &category);
+
+                    nbtcompound effects;
+                    nbtint skyColor(10321919);//Purple
+                    effects.set_tag("sky_color", &skyColor);
+                    nbtint waterFogColor(8364543); //Tint blue
+                    effects.set_tag("water_fog_color", &waterFogColor);
+                    nbtint fogColor(8364543);//Tint blue
+                    effects.set_tag("fog_color", &fogColor);
+                    nbtint waterColor(8364543);//Tint blue
+                    effects.set_tag("water_color", &waterColor);
+                    //The rest are optional fields
+                    biomeProperties.set_tag("effects", &effects);
+
+                    worldGenBiomeCompound.set_tag("element", &biomeProperties);
+
+
+                    joinGame.dimensionCodec.set_tag("minecraft:dimension_type", &dimensionTypeCompound);
+                    joinGame.dimensionCodec.set_tag("minecraft:worldgen/biome", &worldGenBiomeCompound);
                     joinGame.worldName = "minecraft:overworld";
                     joinGame.seed = 0L;
                     joinGame.maxPlayers = MAX_PLAYERS;
@@ -251,11 +320,11 @@ void process_incoming_packet(kissnet::tcp_socket &socket, uint32_t size, kn::buf
         graphene::connectionstate state = connectionStates[&socket];
         int length = reader.read_var_int();
         int id = reader.read_var_int();
+        std::cout << "ID: " << id << ", LENGTH: " << length << std::endl;
         //std::cout << "len: " << length << ", id: " << id << std::endl;
         //std::cout << "rbc: " << reader.remaining_byte_count() << std::endl;
         handle(socket, reader, state, id, buff, size);
         keepProcessing = reader.remaining_byte_count() != 0;
-
     }
 
     //socket.send(buff, size);

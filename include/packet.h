@@ -55,6 +55,7 @@ namespace graphene {
                     address = reader.read_utf_8(255);
                     port = reader.read_unsigned_short();
                     nextState = static_cast<connectionstate>(reader.read_var_int());
+                    std::cout << "pv: " << protocolVersion << ", address: " << address << ", port: " << port << ", nextState: " << nextState << std::endl;
                 }
 
                 void encode(graphene::netstreamwriter& writer) override {
@@ -401,8 +402,8 @@ namespace graphene {
                     writer.write_byte(previousGameMode);
                     writer.write_var_int(worldNames.size());
                     writer.write_utf_8_array(worldNames);
-                    writer.write_nbt(dimensionCodec);
-                    writer.write_nbt(dimension);
+                    writer.write_nbt(&dimensionCodec);
+                    writer.write_nbt(&dimension);
                     writer.write_utf_8(worldName);
                     writer.write_long(seed);
                     writer.write_var_int(maxPlayers);

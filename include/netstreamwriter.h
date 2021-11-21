@@ -107,29 +107,29 @@ namespace graphene {
             }
         }
 
-        void write_nbt_tag(nbt tag) {
-            switch (tag.get_type()) {
+        void write_nbt_tag(nbt* tag) {
+            switch (tag->get_type()) {
                 case NBT_BYTE_ID: {
-                    write_byte(((nbtbyte *) &tag)->value);
+                    write_byte(((nbtbyte *) tag)->value);
                     break;
                 }
                 case NBT_SHORT_ID: {
-                    write_short(((nbtshort *) &tag)->value);
+                    write_short(((nbtshort *) tag)->value);
                     break;
                 }
                 case NBT_INT_ID:
-                    write_int(((nbtint *) &tag)->value);
+                    write_int(((nbtint *) tag)->value);
                     break;
                 case NBT_LONG_ID:
-                    write_long(((nbtlong *) &tag)->value);
+                    write_long(((nbtlong *) tag)->value);
                     break;
                 case NBT_FLOAT_ID:
-                    write_float(((nbtfloat *) &tag)->value);
+                    write_float(((nbtfloat *) tag)->value);
                     break;
                 case NBT_DOUBLE_ID:
-                    write_double(((nbtdouble *) &tag)->value);
+                    write_double(((nbtdouble *) tag)->value);
                 case NBT_BYTE_ARRAY_ID: {
-                    nbtbytearray *array = (nbtbytearray *) &tag;
+                    auto *array = (nbtbytearray *) tag;
                     write_int(array->value.size());
                     for (char b: array->value) {
                         write_byte(b);
@@ -138,22 +138,22 @@ namespace graphene {
                 }
                 case NBT_STRING_ID:
                     //TODO Look into, see string length
-                    write_utf_8(((nbtstring *) &tag)->value);
+                    write_utf_8(((nbtstring *) tag)->value);
                     break;
                 case NBT_LIST_ID: {
-                    nbtlist *list = (nbtlist *) &tag;
+                    auto *list = (nbtlist *) tag;
                     write_byte(list->get_type());
                     write_int(list->tags.size());
-                    for (nbt &tag: list->tags) {
+                    for (nbt* tag: list->tags) {
                         write_nbt_tag(tag);
                     }
                     break;
                 }
 
                 case NBT_COMPOUND_ID: {
-                    nbtcompound *compound = (nbtcompound *) &tag;
-                    for (auto &pair: compound->tags) {
-                        write_byte(pair.second.get_type());
+                    auto *compound = (nbtcompound *) tag;
+                    for (auto pair: compound->tags) {
+                        write_byte(pair.second->get_type());
                         write_utf_8(pair.first);
                         write_nbt_tag(pair.second);
                     }
@@ -162,7 +162,7 @@ namespace graphene {
                 }
 
                 case NBT_INT_ARRAY_ID: {
-                    nbtintarray *array = (nbtintarray *) &tag;
+                    nbtintarray *array = (nbtintarray *) tag;
                     write_int(array->value.size());
                     for (int i: array->value) {
                         write_int(i);
@@ -171,7 +171,7 @@ namespace graphene {
                 }
 
                 case NBT_LONG_ARRAY_ID: {
-                    nbtlongarray *array = (nbtlongarray *) &tag;
+                    nbtlongarray *array = (nbtlongarray *) tag;
                     write_int(array->value.size());
                     for (long i: array->value) {
                         write_long(i);
@@ -183,9 +183,9 @@ namespace graphene {
             }
         }
 
-        void write_nbt(nbt value) {
-            write_byte(value.get_type());
-            if (value.get_type() == NBT_END_ID) {
+        void write_nbt(nbt* value) {
+            write_byte(value->get_type());
+            if (value->get_type() == NBT_END_ID) {
                 return;
             }
             write_utf_8("");

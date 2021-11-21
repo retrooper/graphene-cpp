@@ -195,45 +195,63 @@ namespace graphene {
             return messages;
         }
 
-        std::optional<nbt> read_nbt_tag(char id) {
+        std::optional<nbt *> read_nbt_tag(char id) {
+            std::cout << "ID: " << (+id) << std::endl;
             switch (id) {
-                case NBT_BYTE_ID:
-                    return nbtbyte(read_byte());
-                case NBT_SHORT_ID:
-                    return nbtshort(read_short());
-                case NBT_INT_ID:
-                    return nbtint(read_int());
-                case NBT_LONG_ID:
-                    return nbtlong(read_long());
-                case NBT_FLOAT_ID:
-                    return nbtfloat(read_float());
-                case NBT_DOUBLE_ID:
-                    return nbtdouble(read_double());
+                case NBT_BYTE_ID: {
+                    nbtbyte *val = new nbtbyte(read_byte());
+                    return val;
+                }
+                case NBT_SHORT_ID: {
+                    nbtshort* val = new nbtshort(read_short());
+                    return val;
+                }
+                case NBT_INT_ID: {
+                    nbtint* val = new nbtint(read_int());
+                    return val;
+                }
+                case NBT_LONG_ID: {
+                    nbtlong* val = new nbtlong(read_long());
+                    return val;
+                }
+                case NBT_FLOAT_ID: {
+                    nbtfloat* val = new nbtfloat(read_float());
+                    return val;
+                }
+                case NBT_DOUBLE_ID: {
+                    nbtdouble *val = new nbtdouble(read_double());
+                    return val;
+                }
                 case NBT_BYTE_ARRAY_ID: {
                     std::vector<char> bytes = read_bytes(read_int());
-                    return nbtbytearray(bytes);
+                    nbtbytearray* array = new nbtbytearray(bytes);
+                    return array;
                 }
-                case NBT_STRING_ID:
+                case NBT_STRING_ID: {
                     //TODO Look into, see string length
-                    return nbtstring(read_utf_8());
+                    nbtstring* val = new nbtstring(read_utf_8());
+                    return val;
+                }
                 case NBT_LIST_ID: {
                     char type = read_byte();
                     int size = read_int();
-                    std::vector<nbt> tags(size);
+                    std::vector<nbt*> tags(size);
                     for (int i = 0; i < size; i++) {
                         tags.push_back(read_nbt_tag(type).value());
                     }
-                    return nbtlist(type, tags);
+                    auto* val = new nbtlist(type, tags);
+                    return val;
                 }
 
                 case NBT_COMPOUND_ID: {
-                    std::unordered_map<std::string, nbt> tags;
+                    std::unordered_map<std::string, nbt*> tags;
                     char type;
                     while ((type = read_byte()) != NBT_END_ID) {
                         std::string name = read_utf_8();
                         tags[name] = read_nbt_tag(type).value();
                     }
-                    return nbtcompound(tags);
+                    auto* val = new nbtcompound(tags);
+                    return val;
                 }
 
                 case NBT_INT_ARRAY_ID: {
@@ -242,7 +260,8 @@ namespace graphene {
                     for (int i = 0; i < size; i++) {
                         integers.push_back(read_int());
                     }
-                    return nbtintarray(integers);
+                    nbtintarray* array = new nbtintarray(integers);
+                    return array;
                 }
 
                 case NBT_LONG_ARRAY_ID: {
@@ -251,20 +270,27 @@ namespace graphene {
                     for (int i = 0; i < size; i++) {
                         longs.push_back(read_long());
                     }
-                    return nbtlongarray(longs);
+                    nbtlongarray *array = new nbtlongarray(longs);
+                    return array;
                 }
                 default:
                     return std::nullopt;
             }
         }
 
-        std::optional<nbt> read_nbt() {
+        std::optional<nbt *> read_nbt() {
             char id = read_byte();
             if (id == NBT_END_ID) {
+                std::cout << "NO" << std::endl;
                 return std::nullopt;
             }
             std::string tagName = read_utf_8();
-            return read_nbt_tag(id).value();
+            std::optional<nbt *> valueOpt = read_nbt_tag(id);
+            if (valueOpt.has_value()) {
+                return valueOpt.value();
+            }
+            std::cout << "NO PART 2" << std::endl;
+            return std::nullopt;
         }
     };
 }

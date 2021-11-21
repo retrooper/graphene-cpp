@@ -2,9 +2,9 @@
 
 namespace graphene {
     enum connectionstate {
-        HANDSHAKING,
-        STATUS,
-        LOGIN,
-        PLAY
+        HANDSHAKING = 0,
+        STATUS = 1,
+        LOGIN = 2,
+        PLAY = 3
     };
 }
