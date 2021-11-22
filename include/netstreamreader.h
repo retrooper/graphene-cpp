@@ -25,12 +25,12 @@ namespace graphene {
             index = data.size();
         }
 
-        uint64_t remaining_byte_count() {
+        uint64_t readable_bytes() {
             return data.size() - index;
         }
 
         std::vector<char> remaining_bytes() {
-            uint64_t len = remaining_byte_count();
+            uint64_t len = readable_bytes();
             std::vector<char> remainingBytes(len);
             for (uint64_t i = index; i < len + index; i++) {
                 remainingBytes.push_back(data[i]);
@@ -52,7 +52,7 @@ namespace graphene {
 
         bool read_buf(void *buffer, uint64_t len) {
             char *Dst = static_cast<char *>(buffer);  // So that we can do byte math
-            uint64_t BytesToEndOfBuffer = remaining_byte_count();
+            uint64_t BytesToEndOfBuffer = readable_bytes();
             if (BytesToEndOfBuffer <= len) {
                 // Reading across the ringbuffer end, read the first part and adjust parameters:
                 if (BytesToEndOfBuffer > 0) {

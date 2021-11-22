@@ -21,8 +21,10 @@ graphene::server mcServer;
 
 int expectedTeleportID;
 
+int count = 0;
+
 void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, const graphene::connectionstate &state,
-            const int &id, kn::buffer<50000> &rawBuff, uint32_t rawBuffSize) {
+            const int &id, kn::buffer<1024> &rawBuff, uint32_t rawBuffSize) {
     switch (state) {
         case graphene::HANDSHAKING: {
             graphene::handshaking::client::packethandshake handshake;
@@ -91,11 +93,14 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                 response.jsonResponse = j.dump();
                 graphene::send_packet(socket, response);
                 std::cout << "Sent response, now expecting a ping packet form client!" << std::endl;
-                std::cout << "rem bytes: " << reader.remaining_byte_count() << std::endl;
             } else if (id == 0x01) {
-                reader.finish();
+                graphene::status::client::packetping packetPing;
+                packetPing.decode(reader);
+                std::cout << "Received ping packet from client with payload: " << packetPing.payload << std::endl;
+
                 socket.send(rawBuff, rawBuffSize);
-                connectionStates.erase(&socket);
+                //connectionStates.erase(&socket);
+
                 socket.close();
                 std::cout << "Closed!" << std::endl;
             } else {
@@ -311,7 +316,7 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
 
 }
 
-void process_incoming_packet(kissnet::tcp_socket &socket, uint32_t size, kn::buffer<50000> &buff) {
+void process_incoming_packet(kissnet::tcp_socket &socket, uint32_t size, kn::buffer<1024> &buff) {
     char *charBytes = reinterpret_cast<char *>(buff.data());
     std::vector<char> data(charBytes, charBytes + size);
     graphene::netstreamreader reader(data);
@@ -319,12 +324,17 @@ void process_incoming_packet(kissnet::tcp_socket &socket, uint32_t size, kn::buf
     while (keepProcessing) {
         graphene::connectionstate state = connectionStates[&socket];
         int length = reader.read_var_int();
-        int id = reader.read_var_int();
-        std::cout << "ID: " << id << ", LENGTH: " << length << std::endl;
-        //std::cout << "len: " << length << ", id: " << id << std::endl;
-        //std::cout << "rbc: " << reader.remaining_byte_count() << std::endl;
-        handle(socket, reader, state, id, buff, size);
-        keepProcessing = reader.remaining_byte_count() != 0;
+        if (length == 0xFE) {
+            char payload = reader.read_byte();
+            std::cout << "Server list ping momento: " << payload << std::endl;
+        }
+        else {
+            int id = reader.read_var_int();
+            std::cout << "ID: " << id << ", LENGTH: " << length << std::endl;
+            handle(socket, reader, state, id, buff, size);
+            std::cout << "remaining byte count: " << reader.readable_bytes() << std::endl;
+            keepProcessing = reader.readable_bytes() != 0;
+        }
     }
 
     //socket.send(buff, size);
@@ -376,7 +386,7 @@ int main(int argc, char *argv[]) {
             //Internal loop
             bool continue_receiving = true;
             //Static 1k buffer
-            kn::buffer<50000> buff;
+            kn::buffer<1024> buff;
 
             //While connection is alive
             while (continue_receiving) {

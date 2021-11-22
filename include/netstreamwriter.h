@@ -151,13 +151,23 @@ namespace graphene {
                 }
 
                 case NBT_COMPOUND_ID: {
-                    auto *compound = (nbtcompound *) tag;
-                    for (auto pair: compound->tags) {
-                        write_byte(pair.second->get_type());
-                        write_utf_8(pair.first);
-                        write_nbt_tag(pair.second);
+                    try {
+                        auto *compound = (nbtcompound *) tag;
+                        std::vector<std::string> keys;
+                        for (auto &pair: compound->tags) {
+                            keys.push_back(pair.first);
+                        }
+                        for (const std::string &key: keys) {
+                            nbt *value = compound->tags[key];
+                            write_byte(value->get_type());
+                            write_utf_8(key);
+                            write_nbt_tag(value);
+                        }
+                        write_byte(NBT_END_ID);
                     }
-                    write_byte(NBT_END_ID);
+                    catch (std::exception& ex) {
+                        std::cout << "Error: " << ex.what() << std::endl;
+                    }
                     break;
                 }
 

@@ -31,7 +31,7 @@ namespace graphene {
         finalPacket.write_var_int(bytesLen);
         finalPacket.write_bytes(writer.data, bytesLen);
 
-        kissnet::buffer<50000> buffer;
+        kissnet::buffer<1024> buffer;
         for (int i = 0; i < finalPacket.data.size(); i++) {
             buffer[i] = std::byte{(unsigned char) finalPacket.data[i]};
         }
@@ -310,7 +310,7 @@ namespace graphene {
 
                 void decode(graphene::netstreamreader& reader) override {
                     channel = reader.read_utf_8();
-                    data = reader.read_utf_8(reader.remaining_byte_count());
+                    data = reader.read_utf_8(reader.readable_bytes());
                 }
 
                 void encode(graphene::netstreamwriter& writer) override {
@@ -425,7 +425,7 @@ namespace graphene {
 
                 void decode(graphene::netstreamreader& reader) override {
                     channel = reader.read_utf_8();
-                    data = reader.read_utf_8(reader.remaining_byte_count());
+                    data = reader.read_utf_8(reader.readable_bytes());
                 }
 
                 void encode(graphene::netstreamwriter& writer) override {
