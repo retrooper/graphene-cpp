@@ -64,12 +64,6 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                     //Throw error
                 }
             }
-                //Legacy ping request
-            else if (id == 0xFE) {
-                //TODO Handle legacy ping request, although it isn't urgent
-                std::cout << "dam" << std::endl;
-
-            }
             break;
         }
         case graphene::STATUS: {
@@ -92,15 +86,10 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                 j["description"]["text"] = "Best mc server";
                 response.jsonResponse = j.dump();
                 graphene::send_packet(socket, response);
-                std::cout << "Sent response, now expecting a ping packet form client!" << std::endl;
             } else if (id == 0x01) {
-                graphene::status::client::packetping packetPing;
-                packetPing.decode(reader);
-                std::cout << "Received ping packet from client with payload: " << packetPing.payload << std::endl;
-
+                reader.finish();
                 socket.send(rawBuff, rawBuffSize);
-                //connectionStates.erase(&socket);
-
+                connectionStates.erase(&socket);
                 socket.close();
                 std::cout << "Closed!" << std::endl;
             } else {

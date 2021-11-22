@@ -72,10 +72,8 @@ namespace graphene {
         }
 
 
-        int8_t read_byte() {
-            char result;
-            read_buf(&result, 1);
-            return result;
+        char read_byte() {
+            return data[index++];
         }
 
 
@@ -102,6 +100,7 @@ namespace graphene {
             result = ntohs(result);
             return result;
         }
+
 
         int32_t read_int() {
             uint32_t a = read_unsigned_int();

@@ -36,9 +36,9 @@ struct nbtend : public nbt {
 };
 
 struct nbtbyte : public nbt {
-    int8_t value;
+    char value;
 
-    explicit nbtbyte(int8_t value) {
+    explicit nbtbyte(char value) {
         this->value = value;
         this->type = NBT_BYTE_ID;
     }
