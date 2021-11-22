@@ -164,6 +164,7 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                     dimensionTypeRegistries.tags.push_back(&dimensionTypeReg);
                     dimensionTypeCompound.set_tag("value", &dimensionTypeRegistries);
                     nbtcompound worldGenCompound;
+
                     //Worldgen/biome compound
                     nbtcompound worldGenBiomeCompound;
                     nbtstring worldGenBiomeType("minecraft:worldgen/biome");
@@ -171,8 +172,8 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                     worldGenBiomeCompound.set_tag("type", &worldGenBiomeType);
                     nbtlist worldGenBiomeRegistries(NBT_COMPOUND_ID);
                     nbtcompound worldGenBiomeReg;
-                    nbtstring worldGenBiomeName("minecraft:ocean");
-                    nbtint worldGenBiomeIndex(0);
+                    nbtstring worldGenBiomeName("minecraft:jungle");
+                    nbtint worldGenBiomeIndex(21);
 
                     worldGenBiomeReg.set_tag("name", &worldGenBiomeName);
 
@@ -181,15 +182,15 @@ void handle(kissnet::tcp_socket &socket, graphene::netstreamreader &reader, cons
                     nbtcompound biomeProperties;
                     nbtstring precipitation("rain");
                     biomeProperties.set_tag("precipitation", &precipitation);
-                    nbtfloat depth(1.6f);
+                    nbtfloat depth(0.1f);
                     biomeProperties.set_tag("depth", &depth);
-                    nbtfloat temperature(1.0f);
+                    nbtfloat temperature(0.95f);
                     biomeProperties.set_tag("temperature", &temperature);
                     nbtfloat scale(1.0f);
                     biomeProperties.set_tag("scale", &scale);
-                    nbtfloat downfall(0.5f);
+                    nbtfloat downfall(0.9f);
                     biomeProperties.set_tag("downfall", &downfall);
-                    nbtstring category("ocean");
+                    nbtstring category("jungle");
                     biomeProperties.set_tag("category", &category);
 
                     nbtcompound effects;

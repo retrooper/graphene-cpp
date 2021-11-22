@@ -194,8 +194,8 @@ namespace graphene {
             return messages;
         }
 
+        //TODO Fix memory leak ez
         std::optional<nbt *> read_nbt_tag(char id) {
-            std::cout << "ID: " << (+id) << std::endl;
             switch (id) {
                 case NBT_BYTE_ID: {
                     nbtbyte *val = new nbtbyte(read_byte());

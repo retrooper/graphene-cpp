@@ -168,12 +168,6 @@ struct nbtcompound : public nbt {
         this->type = NBT_COMPOUND_ID;
     }
 
-    ~nbtcompound() {
-        for (const auto &tag: tags) {
-            delete tag.second;
-        }
-    }
-
     nbt *get_tag(const std::string &key) {
         return tags[key];
     }
