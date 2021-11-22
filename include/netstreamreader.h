@@ -232,13 +232,13 @@ namespace graphene {
                     return val;
                 }
                 case NBT_LIST_ID: {
-                    char type = read_byte();
+                    char elementType = read_byte();
                     int size = read_int();
                     std::vector<nbt*> tags(size);
                     for (int i = 0; i < size; i++) {
-                        tags.push_back(read_nbt_tag(type).value());
+                        tags.push_back(read_nbt_tag(elementType).value());
                     }
-                    auto* val = new nbtlist(type, tags);
+                    auto* val = new nbtlist(elementType, tags);
                     return val;
                 }
 

@@ -135,14 +135,17 @@ struct nbtstring : public nbt {
 
 struct nbtlist : public nbt {
     std::vector<nbt *> tags;
+    char elementType;
 
-    nbtlist(int32_t type, std::vector<nbt *> tags) {
-        this->type = type;
+    nbtlist(char elementType, std::vector<nbt *> tags) {
+        this->type = NBT_LIST_ID;
+        this->elementType = elementType;
         this->tags = tags;
     }
 
-    explicit nbtlist(int32_t type) {
-        this->type = type;
+    explicit nbtlist(char elementType) {
+        this->type = NBT_LIST_ID;
+        this->elementType = elementType;
     }
 
     ~nbtlist() {
